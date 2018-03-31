@@ -1,46 +1,55 @@
-import time
-import os
-import controller
+import numpy as np
 import cv2
 import pyautogui
+import time
 
-def main():
-    time.sleep(10)
-    controlPC = controller.Controller(1)
-    savedimg = cv2.imread("images/pres" + controlPC.randname + "nt.png")
-    capt = cv2.VideoCapture(1)
-    flag = True
-    pdiffsum, diffsum = 0,0
-    while True:
-        pdiffsum = diffsum
-        ret,frame1 = capt.read()
-        controlPC.feedFace(frame1)
-        if(controlPC.x1 + controlPC.y1  > 0):
-            newsaveimg = savedimg[0:controlPC.y1-(controlPC.y1//2), controlPC.x1:controlPC.x1 + controlPC.w1]
-            newsaveimg = cv2.GaussianBlur(newsaveimg,(8,8),0)
-            graysaved = cv2.cvtColor(newsaveimg, cv2.COLOR_BGR2GRAY)
-            #ret,frame1 = capt.read()
-            frame2 = frame1[0:controlPC.y1-(controlPC.y1//2), controlPC.x1:controlPC.x1 + controlPC.w1]
-            frame2 = cv2.GaussianBlur(frame2,(8,8),0)
-            grayframe2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-            diff = cv2.absdiff(grayframe2, graysaved)
-            if flag:
-                diffsum = diff.sum()
-                flag = False
+face_cascade = cv2.CascadeClassifier('face_data.xml')
+eye_cascade = cv2.CascadeClassifier('eyes_data.xml')
+cap = cv2.VideoCapture(1)
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+fgbg = cv2.createBackgroundSubtractorMOG2()
+fgbg2 = cv2.createBackgroundSubtractorMOG2()
+start = time.time() + 1
+x1, y1, w1, h2 = 0,10,10,10
+while True:
+    ret, frame = cap.read()
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    for (x,y,w,h) in faces:
+        cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),2)
+        [x1, y1, w1, h2] = [x,y,w,h]
+    width = cap.get(3)  # float
+    height = cap.get(4) # float
+    fgmask = fgbg.apply(frame)
+    fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+    preimg = fgmask[0:int(y1//2), 0:int(width)]
+    ret, frame = cap.read()
+    fgmask2 = fgbg.apply(frame)
+    fgmask2 = cv2.morphologyEx(fgmask2, cv2.MORPH_OPEN, kernel)
+    crrimg = fgmask2[0:int(y1//2), 0:int(width)]
+    diff = cv2.absdiff(preimg, crrimg)
+    diffsum = diff.sum() 
+    #cv2.imshow('frame',fgmask)
+    #cv2.imshow('frame',fgmask2)
+    cv2.putText(diff,str(diffsum), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+    cv2.imshow('diff',diff)
+    cv2.imshow('frame',frame)
+    if diffsum//1000000 > 0:
+        if (int(time.time()-start) > 1):
+            
+            leftimg = diff[0:int(y1//2), 0:int(x1 + w1//2)]
+            rightimg = diff[0:int(y1//2), int(x1 + w1//2):int(width)]
+            if leftimg.sum() > rightimg.sum():
+                pyautogui.press('right')
+                print("right pressed")
             else:
-                diffsum = diff.sum()
-                if (abs(pdiffsum - diffsum)//1000000) > 0 :
-                    pyautogui.press('right')
-                    print("key pressed with difference " + str(abs(pdiffsum - diffsum)))
-            _, thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY)
-            cv2.imshow("thresh", thresh)
-        cv2.imshow("frame", frame1)
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
-            break
+                pyautogui.press('left')
+                print("left pressed")
+            start = time.time()
+    k = cv2.waitKey(30) & 0xff
+    if k == 27:
+        break
+    
 
-    capt.release()
-    cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    main()
+cap.release()
+cv2.destroyAllWindows()
