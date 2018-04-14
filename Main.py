@@ -3,9 +3,10 @@ import cv2
 import pyautogui
 import time
 
+camera = int(input('enter the camera index '))
 face_cascade = cv2.CascadeClassifier('face_data.xml')
 eye_cascade = cv2.CascadeClassifier('eyes_data.xml')
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(camera)
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
 fgbg = cv2.createBackgroundSubtractorMOG2()
 fgbg2 = cv2.createBackgroundSubtractorMOG2()
@@ -27,24 +28,25 @@ while True:
     height = cap.get(4)
     fgmask = fgbg.apply(frame)
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
-    preimg = fgmask[0:int(y1//2), 0:int(width)]
+    frameY = y1//2 + y1//4
+    preimg = fgmask[0:int(frameY), 0:int(width)]
     ret, frame = cap.read()
     fgmask2 = fgbg.apply(frame)
     fgmask2 = cv2.morphologyEx(fgmask2, cv2.MORPH_OPEN, kernel)
-    crrimg = fgmask2[0:int(y1//2), 0:int(width)]
+    crrimg = fgmask2[0:int(frameY), 0:int(width)]
     diff = cv2.absdiff(preimg, crrimg)
     diffsum = diff.sum() 
     #cv2.imshow('frame',fgmask)
     #cv2.imshow('frame',fgmask2)
     cv2.putText(diff,str(diffsum), (10,20), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
-    #cv2.imshow('diff',diff)
+    cv2.imshow('diff',diff)
     cv2.imshow('frame',frame)
-    #need to          this   | remove if dont work
-    if diffsum//1000000 > 0 and flag:
+    #need to                 | remove if don't work
+    if diffsum//100000 > 0 and flag:
         if (int(time.time()-start) > 1):
             
-            leftimg = diff[0:int(y1//2), 0:int(x1 + w1//2)]
-            rightimg = diff[0:int(y1//2), int(x1 + w1//2):int(width)]
+            leftimg = diff[0:int(frameY), 0:int(x1 + w1//2)]
+            rightimg = diff[0:int(frameY), int(x1 + w1//2):int(width)]
             if leftimg.sum() > rightimg.sum():
                 pyautogui.press('right')
                 print("right pressed")
@@ -52,7 +54,7 @@ while True:
                 pyautogui.press('left')
                 print("left pressed")
             start = time.time()
-    if cv2.waitKey(17) == ord('q'):
+    if cv2.waitKey(27) == ord('q'):
         break
     
 
