@@ -10,9 +10,9 @@ see this youtube video to know more:
 https://youtu.be/lRmVR6eZAJ0
 
 ## Dependencies
-opencv-python
-opencv-contrib-python
-pyautogui
+- opencv-python
+- opencv-contrib-python
+- pyautogui
 
 ## usage
 ```
